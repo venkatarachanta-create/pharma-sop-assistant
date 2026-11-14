@@ -1,0 +1,22 @@
+[
+    {
+        "question": "How many total samples must a Drugs Inspector collect in a month, and what is the category split?",
+        "ground_truth": "Each Drugs Inspector must collect at least 10 samples in a month, comprising 9 samples of drugs (API, Excipient, and Formulations) and 1 sample of cosmetics or medical devices."
+    },
+    {
+        "question": "What is the maximum timeline for a Drugs Inspector to forward collected samples to a testing laboratory?",
+        "ground_truth": "Samples must be forwarded to the laboratory on the same day of sampling, or by the next day if delayed due to transit from a rural or distant location."
+    },
+    {
+        "question": "How many tablets and capsules are required as Form-18 legal samples versus survey samples?",
+        "ground_truth": "Both tablets and capsules require 100 units for Form-18 legal samples and 20 units for survey samples."
+    },
+    {
+        "question": "How many Central Medical Device Testing Laboratories (CMDTL) are notified by MOH&FW under MDR 2017?",
+        "ground_truth": "A total of 6 Central Medical Device Testing Laboratories (CMDTL) are notified by MOH&FW under MDR 2017."
+    },
+    {
+        "question": "By what date of the month must NSQ alerts from state and central laboratories be reported for uploading on the CDSCO website?",
+        "ground_truth": "NSQ reports must be reported in Excel sheet format as per Annexure-6 preferably before the 10th of every month."
+    }
+]

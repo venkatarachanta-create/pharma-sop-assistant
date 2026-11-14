@@ -1,0 +1,25 @@
+# Web UI
+streamlit>=1.38.0
+
+# RAG & Orchestration
+langchain>=0.3.0
+langchain-community>=0.3.0
+langchain-openai>=0.2.0
+langchain-google-genai>=2.0.0
+langchain-text-splitters>=0.3.0
+
+# Vector Database & PDF Parsing
+chromadb>=0.5.5
+pypdf>=4.3.1
+
+# Configuration & Data Validation
+pydantic>=2.8.0
+pydantic-settings>=2.4.0
+python-dotenv>=1.0.1
+
+# Evaluation & Testing
+ragas>=0.1.20
+datasets>=2.21.0
+pandas>=2.2.2
+pytest>=8.3.0
+ragas>=0.4.3
