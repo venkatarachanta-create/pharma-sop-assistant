@@ -7,6 +7,7 @@ from src.guardrails.output_rail import enforce_output_guardrail
 from src.rag.vectorstore import load_vectorstore
 from src.rag.prompts import get_qa_prompt
 from src.utils.logger import log_audit_event
+from pydantic import SecretStr
 
 
 def _get_llm():
@@ -19,7 +20,7 @@ def _get_llm():
     return ChatOpenAI(
         model=settings.llm_model,
         temperature=settings.temperature,
-        api_key=settings.openai_api_key,
+        api_key=SecretStr(settings.openai_api_key),
     )
 
 
@@ -33,13 +34,17 @@ def run_pharma_rag(query: str) -> dict:
         return {"answer": msg_or_clean_query, "sources": [], "contexts": [], "blocked": True}
 
     vectorstore = load_vectorstore()
-    retriever = vectorstore.as_retriever(search_kwargs={"k": settings.top_k_results})
+    retriever = vectorstore.as_retriever(
+        search_type="mmr",
+        search_kwargs={"k": settings.top_k_results, "fetch_k": 20},
+    )
     docs = retriever.invoke(msg_or_clean_query)
 
     sources = [
         f"[Source: {d.metadata.get('doc_name', 'Unknown')}, Page {d.metadata.get('page_num', '?')}]"
         for d in docs
     ]
+
     contexts = [d.page_content for d in docs]
     formatted_context = "\n\n---\n\n".join(
         f"{src}\n{doc.page_content}" for src, doc in zip(sources, docs)
@@ -48,7 +53,6 @@ def run_pharma_rag(query: str) -> dict:
     chain = get_qa_prompt() | _get_llm()
     raw_response = chain.invoke({"context": formatted_context, "question": msg_or_clean_query})
     final_answer = enforce_output_guardrail(str(raw_response.content), sources)
-
 
     latency = (time.perf_counter() - start) * 1000
     log_audit_event(msg_or_clean_query, "SUCCESS", final_answer, list(dict.fromkeys(sources)), latency)

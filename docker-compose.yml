@@ -1,0 +1,13 @@
+services:
+  pharma-sop-assistant:
+    build: .
+    container_name: pharma-sop-assistant
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    volumes:
+      - ./data/raw_pdfs:/app/data/raw_pdfs
+      - ./data/chroma_db:/app/data/chroma_db
+      - ./data/logs:/app/data/logs
+    restart: unless-stopped
