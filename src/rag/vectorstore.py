@@ -1,7 +1,8 @@
 from langchain_openai import OpenAIEmbeddings
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
+from pydantic import SecretStr
 from src.config.settings import settings
 
 
@@ -9,27 +10,23 @@ def get_embeddings():
     if settings.llm_provider.lower() == "gemini":
         return GoogleGenerativeAIEmbeddings(
             model="models/text-embedding-004",
-            google_api_key=settings.gemini_api_key,
+            api_key=SecretStr(settings.gemini_api_key),
         )
     return OpenAIEmbeddings(
         model=settings.embedding_model,
-        api_key=settings.openai_api_key,
+        api_key=SecretStr(settings.openai_api_key),
     )
 
-
-def build_vectorstore(chunks: list[Document]) -> Chroma:
+def build_vectorstore(chunks: list[Document]) -> FAISS:
     settings.chroma_persist_dir.mkdir(parents=True, exist_ok=True)
-    return Chroma.from_documents(
-        documents=chunks,
-        embedding=get_embeddings(),
-        persist_directory=str(settings.chroma_persist_dir),
-        collection_name="pharma_sop_docs",
-    )
+    vs = FAISS.from_documents(documents=chunks, embedding=get_embeddings())
+    vs.save_local(str(settings.chroma_persist_dir))
+    return vs
 
 
-def load_vectorstore() -> Chroma:
-    return Chroma(
-        persist_directory=str(settings.chroma_persist_dir),
-        embedding_function=get_embeddings(),
-        collection_name="pharma_sop_docs",
+def load_vectorstore() -> FAISS:
+    return FAISS.load_local(
+        str(settings.chroma_persist_dir),
+        get_embeddings(),
+        allow_dangerous_deserialization=True,
     )
