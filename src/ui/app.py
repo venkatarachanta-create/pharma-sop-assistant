@@ -2,7 +2,9 @@ import shutil
 import sys
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).resolve().parents))
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 import streamlit as st
 from src.rag.pipeline import run_pharma_rag
