@@ -34,7 +34,10 @@ def _route_retrieval(vectorstore, query: str):
     is_summary = any(kw in query_lower for kw in SUMMARY_KEYWORDS)
 
     if is_summary:
-        all_docs = list(vectorstore.docstore._dict.values())
+        all_docs = [
+            d for d in vectorstore.docstore._dict.values()
+            if len(d.page_content.strip()) > 100
+        ]
         target_doc = None
 
         for pdf_path in settings.raw_pdf_dir.glob("*.pdf"):
@@ -43,25 +46,23 @@ def _route_retrieval(vectorstore, query: str):
                 break
 
         if target_doc:
-            # Summarize a specific named PDF using its opening pages (TOC, Scope, Objectives)
-            matched = [
-                d for d in all_docs
-                if d.metadata.get("doc_name") == target_doc and d.metadata.get("page_num", 99) <= 6
-            ]
+            matched = [d for d in all_docs if d.metadata.get("doc_name") == target_doc]
             matched.sort(key=lambda d: d.metadata.get("page_num", 99))
-            return matched[: settings.top_k_results]
+            return matched[: settings.top_k_results], True
 
-        # Summarize all uploaded PDFs together using pages 1-2 of each document
-        multi_doc = [d for d in all_docs if d.metadata.get("page_num", 99) <= 2]
-        multi_doc.sort(key=lambda d: (d.metadata.get("doc_name", ""), d.metadata.get("page_num", 99)))
-        return multi_doc[: settings.top_k_results]
+        by_doc = {}
+        for d in sorted(all_docs, key=lambda x: x.metadata.get("page_num", 99)):
+            name = d.metadata.get("doc_name", "Unknown")
+            if len(by_doc.get(name, [])) < 2:
+                by_doc.setdefault(name, []).append(d)
+        combined = [chunk for chunks in by_doc.values() for chunk in chunks]
+        return combined[: settings.top_k_results], True
 
-    # Default: MMR semantic retrieval for specific compliance questions
     retriever = vectorstore.as_retriever(
         search_type="mmr",
         search_kwargs={"k": settings.top_k_results, "fetch_k": 20},
     )
-    return retriever.invoke(query)
+    return retriever.invoke(query), False
 
 
 def run_pharma_rag(query: str) -> dict:
@@ -74,7 +75,7 @@ def run_pharma_rag(query: str) -> dict:
         return {"answer": msg_or_clean_query, "sources": [], "contexts": [], "blocked": True}
 
     vectorstore = load_vectorstore()
-    docs = _route_retrieval(vectorstore, msg_or_clean_query)
+    docs, is_summary = _route_retrieval(vectorstore, msg_or_clean_query)
 
     sources = [
         f"[Source: {d.metadata.get('doc_name', 'Unknown')}, Page {d.metadata.get('page_num', '?')}]"
@@ -85,7 +86,7 @@ def run_pharma_rag(query: str) -> dict:
         f"{src}\n{doc.page_content}" for src, doc in zip(sources, docs)
     )
 
-    chain = get_qa_prompt() | _get_llm()
+    chain = get_qa_prompt(is_summary=is_summary) | _get_llm()
     raw_response = chain.invoke({"context": formatted_context, "question": msg_or_clean_query})
     final_answer = enforce_output_guardrail(str(raw_response.content), sources)
 
